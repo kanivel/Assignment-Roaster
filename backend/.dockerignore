@@ -1,0 +1,32 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Tests are not shipped in the image
+tests/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker / VCS / IDE
+Dockerfile
+.dockerignore
+.git/
+.gitignore
+.idea/
+.vscode/
+.DS_Store

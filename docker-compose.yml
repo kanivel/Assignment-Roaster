@@ -1,0 +1,66 @@
+# docker-compose.yml - production-style stack for Assignment Roaster
+# Usage: cp .env.example .env && docker compose up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: assignment-roaster-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-assignment_roaster}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-assignment_roaster}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: assignment-roaster-backend
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Inside the compose network the database host is the "postgres" service,
+      # so override whatever DATABASE_URL is set in .env for local development.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-assignment_roaster}
+    # Not published on the host: the frontend nginx proxies /api/ to backend:8000.
+    # Publishing it would bypass nginx and allow spoofed X-Forwarded-For headers.
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the bundle at build time. Leave VITE_API_URL empty in .env
+        # when deploying with compose so nginx proxies /api/ to the backend.
+        VITE_API_URL: ${VITE_API_URL:-}
+    container_name: assignment-roaster-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
