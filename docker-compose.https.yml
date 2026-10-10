@@ -1,0 +1,26 @@
+# HTTPS overlay: Caddy terminates TLS (automatic Let's Encrypt) and proxies to the nginx frontend.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.https.yml up -d --build
+# Requires SITE_DOMAIN in .env (e.g. roaster.example.com) with an A record pointing at this server.
+services:
+  frontend:
+    ports: !override []
+    expose:
+      - "80"
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  caddy_data:
+  caddy_config:
