@@ -1,0 +1,11 @@
+# Production overrides: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Publishes the nginx frontend on port 80 and restarts containers automatically.
+services:
+  postgres:
+    restart: unless-stopped
+  backend:
+    restart: unless-stopped
+  frontend:
+    restart: unless-stopped
+    ports: !override
+      - "80:80"
